@@ -612,9 +612,13 @@ class FixtureRequest(abc.ABC):
         subrequest = SubRequest(
             self, scope, param, param_index, fixturedef, _ispytest=True
         )
-
-        # Make sure the fixture value is cached, running it if it isn't
-        fixturedef.execute(request=subrequest)
+        try:
+            # Call the fixture function.
+            fixturedef.execute(request=subrequest)
+        finally:
+            # If fixture function failed it might have registered finalizers.
+            finalizer = functools.partial(fixturedef.finish, request=subrequest)
+            subrequest.node.addfinalizer(finalizer)
 
         self._fixture_defs[argname] = fixturedef
         return fixturedef
